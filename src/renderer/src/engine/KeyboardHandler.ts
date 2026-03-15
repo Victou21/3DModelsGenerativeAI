@@ -32,6 +32,7 @@ export class KeyboardHandler {
         case 'a': this.callbacks.setTool('add'); break
         case 'r': this.callbacks.setTool('remove'); break
         case 'p': this.callbacks.setTool('paint'); break
+        case 'n': this.callbacks.setTool('navigate'); break
       }
     }
 

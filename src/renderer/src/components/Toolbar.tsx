@@ -1,4 +1,4 @@
-import { Plus, Minus, Paintbrush, Grid3X3, Download, Undo2, Redo2 } from 'lucide-react'
+import { Plus, Minus, Paintbrush, Grid3X3, Download, Undo2, Redo2, RotateCcw } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { ToolName } from '../engine/SceneManager'
 
@@ -10,9 +10,10 @@ interface ToolItem {
 }
 
 const TOOLS: ToolItem[] = [
-  { name: 'add',    icon: <Plus size={18} />,       label: 'Add voxel',    shortcut: 'A' },
-  { name: 'remove', icon: <Minus size={18} />,      label: 'Remove voxel', shortcut: 'R' },
-  { name: 'paint',  icon: <Paintbrush size={18} />, label: 'Paint voxel',  shortcut: 'P' },
+  { name: 'navigate', icon: <RotateCcw size={18} />, label: 'Rotate view',   shortcut: 'N' },
+  { name: 'add',      icon: <Plus size={18} />,      label: 'Add voxel',     shortcut: 'A' },
+  { name: 'remove',   icon: <Minus size={18} />,     label: 'Remove voxel',  shortcut: 'R' },
+  { name: 'paint',    icon: <Paintbrush size={18} />, label: 'Paint voxel',  shortcut: 'P' },
 ]
 
 interface Props {

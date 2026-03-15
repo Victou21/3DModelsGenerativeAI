@@ -20,8 +20,9 @@ import { Tool } from './tools/Tool'
 import { AddTool } from './tools/AddTool'
 import { RemoveTool } from './tools/RemoveTool'
 import { PaintTool } from './tools/PaintTool'
+import { NavigateTool } from './tools/NavigateTool'
 
-export type ToolName = 'add' | 'remove' | 'paint'
+export type ToolName = 'add' | 'remove' | 'paint' | 'navigate'
 
 /**
  * SceneManager — top-level orchestrator for the Babylon.js scene.
@@ -43,7 +44,8 @@ export class SceneManager {
   private tools: Map<ToolName, Tool> = new Map([
     ['add', new AddTool()],
     ['remove', new RemoveTool()],
-    ['paint', new PaintTool()]
+    ['paint', new PaintTool()],
+    ['navigate', new NavigateTool()]
   ])
 
   private activeTool: Tool
@@ -178,6 +180,7 @@ export class SceneManager {
     this.activeTool = tool
     this.activeToolName = name
     if (name !== 'add') this.ghost.hide()
+    this.camera.setNavigateMode(name === 'navigate')
     this.onToolChange?.(name)
   }
 
