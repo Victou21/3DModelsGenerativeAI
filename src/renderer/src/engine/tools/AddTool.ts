@@ -1,41 +1,38 @@
-import { PickingInfo, Vector3 } from '@babylonjs/core'
+import { PickingInfo } from '@babylonjs/core'
 import { Tool, ToolContext } from './Tool'
+import { Command } from '../commands/Command'
+import { AddVoxelCommand } from '../commands/AddVoxelCommand'
 
-/**
- * AddTool — places a voxel adjacent to the face that was clicked.
- */
 export class AddTool extends Tool {
   readonly name = 'add'
   private isDown = false
 
-  onPointerDown(pick: PickingInfo, ctx: ToolContext): void {
+  onPointerDown(pick: PickingInfo, ctx: ToolContext): Command | null {
     this.isDown = true
-    this.place(pick, ctx)
+    return this.buildCommand(pick, ctx)
   }
 
-  onPointerMove(pick: PickingInfo, ctx: ToolContext): void {
-    if (this.isDown) this.place(pick, ctx)
+  onPointerMove(pick: PickingInfo, ctx: ToolContext): Command | null {
+    return this.isDown ? this.buildCommand(pick, ctx) : null
   }
 
   onPointerUp(_pick: PickingInfo, _ctx: ToolContext): void {
     this.isDown = false
   }
 
-  private place(pick: PickingInfo, ctx: ToolContext): void {
-    if (!pick.hit || !pick.pickedPoint || !pick.getNormal) return
+  private buildCommand(pick: PickingInfo, ctx: ToolContext): Command | null {
+    if (!pick.hit || !pick.pickedPoint || !pick.getNormal) return null
 
     const normal = pick.getNormal(true)
-    if (!normal) return
+    if (!normal) return null
 
-    // Step slightly outside the face to find the new voxel position
     const worldPos = pick.pickedPoint.add(normal.scale(0.5))
     const x = Math.floor(worldPos.x)
     const y = Math.floor(worldPos.y)
     const z = Math.floor(worldPos.z)
 
-    if (ctx.grid.has(x, y, z)) return
+    if (ctx.grid.has(x, y, z)) return null
 
-    ctx.grid.set(x, y, z, { color: ctx.activeColor })
-    ctx.renderer.addVoxel(x, y, z, ctx.activeColor)
+    return new AddVoxelCommand(ctx.grid, ctx.renderer, x, y, z, ctx.activeColor)
   }
 }

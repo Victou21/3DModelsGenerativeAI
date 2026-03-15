@@ -1,41 +1,38 @@
 import { PickingInfo } from '@babylonjs/core'
 import { Tool, ToolContext } from './Tool'
+import { Command } from '../commands/Command'
+import { RemoveVoxelCommand } from '../commands/RemoveVoxelCommand'
 
-/**
- * RemoveTool — removes the voxel that was clicked.
- */
 export class RemoveTool extends Tool {
   readonly name = 'remove'
   private isDown = false
 
-  onPointerDown(pick: PickingInfo, ctx: ToolContext): void {
+  onPointerDown(pick: PickingInfo, ctx: ToolContext): Command | null {
     this.isDown = true
-    this.erase(pick, ctx)
+    return this.buildCommand(pick, ctx)
   }
 
-  onPointerMove(pick: PickingInfo, ctx: ToolContext): void {
-    if (this.isDown) this.erase(pick, ctx)
+  onPointerMove(pick: PickingInfo, ctx: ToolContext): Command | null {
+    return this.isDown ? this.buildCommand(pick, ctx) : null
   }
 
   onPointerUp(_pick: PickingInfo, _ctx: ToolContext): void {
     this.isDown = false
   }
 
-  private erase(pick: PickingInfo, ctx: ToolContext): void {
-    if (!pick.hit || !pick.pickedPoint || !pick.getNormal) return
+  private buildCommand(pick: PickingInfo, ctx: ToolContext): Command | null {
+    if (!pick.hit || !pick.pickedPoint || !pick.getNormal) return null
 
     const normal = pick.getNormal(true)
-    if (!normal) return
+    if (!normal) return null
 
-    // Step slightly inside the face to find the clicked voxel
     const worldPos = pick.pickedPoint.subtract(normal.scale(0.5))
     const x = Math.floor(worldPos.x)
     const y = Math.floor(worldPos.y)
     const z = Math.floor(worldPos.z)
 
-    if (!ctx.grid.has(x, y, z)) return
+    if (!ctx.grid.has(x, y, z)) return null
 
-    ctx.grid.remove(x, y, z)
-    ctx.renderer.removeVoxel(x, y, z)
+    return new RemoveVoxelCommand(ctx.grid, ctx.renderer, x, y, z)
   }
 }
