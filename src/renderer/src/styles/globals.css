@@ -105,6 +105,29 @@ html, body, #root {
   box-shadow: 0 0 0 1px rgba(255,255,255,0.12);
 }
 
+.tool-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.tool-btn:disabled:hover {
+  background: transparent;
+  color: var(--text);
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+.export-btn {
+  color: var(--accent);
+}
+
+.export-btn:hover {
+  background: rgba(91, 141, 217, 0.15);
+  color: var(--accent);
+}
+
 /* color swatch button */
 .color-swatch {
   display: block;
