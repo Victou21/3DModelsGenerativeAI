@@ -6,9 +6,11 @@ import { RemoveVoxelCommand } from '../commands/RemoveVoxelCommand'
 export class RemoveTool extends Tool {
   readonly name = 'remove'
   private isDown = false
+  private lastKey = ''
 
   onPointerDown(pick: PickingInfo, ctx: ToolContext): Command | null {
     this.isDown = true
+    this.lastKey = ''
     return this.buildCommand(pick, ctx)
   }
 
@@ -18,6 +20,7 @@ export class RemoveTool extends Tool {
 
   onPointerUp(_pick: PickingInfo, _ctx: ToolContext): void {
     this.isDown = false
+    this.lastKey = ''
   }
 
   private buildCommand(pick: PickingInfo, ctx: ToolContext): Command | null {
@@ -31,7 +34,12 @@ export class RemoveTool extends Tool {
     const y = Math.floor(worldPos.y)
     const z = Math.floor(worldPos.z)
 
+    if (!ctx.grid.inBounds(x, y, z)) return null
     if (!ctx.grid.has(x, y, z)) return null
+
+    const key = `${x},${y},${z}`
+    if (key === this.lastKey) return null
+    this.lastKey = key
 
     return new RemoveVoxelCommand(ctx.grid, ctx.renderer, x, y, z)
   }

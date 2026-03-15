@@ -111,6 +111,12 @@ export class SceneManager {
 
   private setupPointerEvents(): void {
     this.scene.onPointerObservable.add((pointerInfo) => {
+      // Suppress all tool events while Alt+dragging to orbit
+      if (this.camera.isAltDragging) {
+        this.ghost.hide()
+        return
+      }
+
       const pick = this.scene.pick(this.scene.pointerX, this.scene.pointerY)
       if (!pick) return
 
@@ -118,9 +124,8 @@ export class SceneManager {
 
       switch (pointerInfo.type) {
         case PointerEventTypes.POINTERMOVE: {
-          // Hover — update ghost voxel (only meaningful for AddTool)
-          this.activeTool.onHover(pick, ctx)
-
+          // Ghost voxel preview (independent of drag — always update)
+          let ghostShown = false
           if (this.activeToolName === 'add' && pick.hit && pick.pickedPoint && pick.getNormal) {
             const normal = pick.getNormal(true)
             if (normal) {
@@ -130,13 +135,13 @@ export class SceneManager {
               const z = Math.floor(wp.z)
               if (!this.voxelGrid.has(x, y, z) && this.voxelGrid.inBounds(x, y, z)) {
                 this.ghost.show(x, y, z, this.activeColor)
-                break
+                ghostShown = true
               }
             }
           }
-          this.ghost.hide()
+          if (!ghostShown) this.ghost.hide()
 
-          // Drag with left button
+          // Drag placement — fires every cell the cursor enters
           if (pointerInfo.event.buttons === 1) {
             const cmd = this.activeTool.onPointerMove(pick, ctx)
             if (cmd) {

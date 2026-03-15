@@ -6,9 +6,11 @@ import { PaintVoxelCommand } from '../commands/PaintVoxelCommand'
 export class PaintTool extends Tool {
   readonly name = 'paint'
   private isDown = false
+  private lastKey = ''
 
   onPointerDown(pick: PickingInfo, ctx: ToolContext): Command | null {
     this.isDown = true
+    this.lastKey = ''
     return this.buildCommand(pick, ctx)
   }
 
@@ -18,6 +20,7 @@ export class PaintTool extends Tool {
 
   onPointerUp(_pick: PickingInfo, _ctx: ToolContext): void {
     this.isDown = false
+    this.lastKey = ''
   }
 
   private buildCommand(pick: PickingInfo, ctx: ToolContext): Command | null {
@@ -31,8 +34,14 @@ export class PaintTool extends Tool {
     const y = Math.floor(worldPos.y)
     const z = Math.floor(worldPos.z)
 
+    if (!ctx.grid.inBounds(x, y, z)) return null
+
     const existing = ctx.grid.get(x, y, z)
     if (!existing || existing.color === ctx.activeColor) return null
+
+    const key = `${x},${y},${z}`
+    if (key === this.lastKey) return null
+    this.lastKey = key
 
     return new PaintVoxelCommand(ctx.grid, ctx.renderer, x, y, z, ctx.activeColor)
   }

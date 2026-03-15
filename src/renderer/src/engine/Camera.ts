@@ -9,14 +9,14 @@ import {
  * Camera — wraps ArcRotateCamera configured for editor use.
  *
  * Controls:
- *   Alt + Left drag  → orbit  (industry standard: Blender/Maya)
- *   Middle drag      → orbit  (alternative)
+ *   Alt + Left drag  → orbit  (shows grab cursor, blocks tool events)
+ *   Middle drag      → orbit
  *   Right drag       → pan
  *   Scroll           → zoom
  */
 export class Camera {
   private camera: ArcRotateCamera
-  private isAltDragging = false
+  private _isAltDragging = false
   private lastX = 0
   private lastY = 0
   private readonly orbitSpeed = 0.008
@@ -38,47 +38,68 @@ export class Camera {
     this.camera.minZ = 0.1
     this.camera.panningAxis = new Vector3(1, 0, 1)
 
-    // Middle=orbit, Right=pan — left click stays free for tools
+    // Middle=orbit, Right=pan — left is reserved for tools
     const pointers = this.camera.inputs.attached['pointers'] as ArcRotateCameraPointersInput
     pointers.buttons = [1, 2]
 
     this.camera.attachControl(canvas, true)
     this.setupAltDrag(canvas)
+    this.setupCursor(canvas)
   }
 
-  /**
-   * Alt + left drag to orbit — manual handler since Babylon's pointer input
-   * doesn't support modifier-key bindings natively.
-   */
+  /** True while the user is Alt+left dragging to orbit. Used by SceneManager to suppress tools. */
+  get isAltDragging(): boolean {
+    return this._isAltDragging
+  }
+
   private setupAltDrag(canvas: HTMLCanvasElement): void {
     canvas.addEventListener('pointerdown', (e) => {
       if (e.button === 0 && e.altKey) {
-        this.isAltDragging = true
+        this._isAltDragging = true
         this.lastX = e.clientX
         this.lastY = e.clientY
         canvas.setPointerCapture(e.pointerId)
+        canvas.style.cursor = 'grabbing'
         e.stopPropagation()
       }
-    })
+    }, true) // useCapture=true so it fires before Babylon's listener
 
     canvas.addEventListener('pointermove', (e) => {
-      if (!this.isAltDragging) return
+      if (!this._isAltDragging) return
       const dx = e.clientX - this.lastX
       const dy = e.clientY - this.lastY
       this.camera.alpha -= dx * this.orbitSpeed
-      this.camera.beta  = Math.max(0.1, Math.min(Math.PI - 0.1,
+      this.camera.beta = Math.max(0.05, Math.min(Math.PI - 0.05,
         this.camera.beta - dy * this.orbitSpeed
       ))
       this.lastX = e.clientX
       this.lastY = e.clientY
       e.stopPropagation()
-    })
+    }, true)
 
     canvas.addEventListener('pointerup', (e) => {
-      if (this.isAltDragging) {
-        this.isAltDragging = false
+      if (this._isAltDragging) {
+        this._isAltDragging = false
         canvas.releasePointerCapture(e.pointerId)
+        canvas.style.cursor = e.altKey ? 'grab' : 'crosshair'
         e.stopPropagation()
+      }
+    }, true)
+  }
+
+  /** Show grab cursor when Alt is held, crosshair otherwise. */
+  private setupCursor(canvas: HTMLCanvasElement): void {
+    canvas.style.cursor = 'crosshair'
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Alt' && !this._isAltDragging) {
+        canvas.style.cursor = 'grab'
+      }
+    })
+
+    window.addEventListener('keyup', (e) => {
+      if (e.key === 'Alt') {
+        canvas.style.cursor = this._isAltDragging ? 'grabbing' : 'crosshair'
       }
     })
   }
