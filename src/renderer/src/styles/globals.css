@@ -56,12 +56,22 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12px 0;
+  padding-top: 52px; /* clear macOS traffic lights */
+  padding-bottom: 12px;
   gap: 4px;
   background: rgba(14, 14, 14, 0.85);
   backdrop-filter: blur(12px);
   border-right: 1px solid var(--border);
   z-index: 10;
+  -webkit-app-region: drag; /* makes the toolbar area draggable to move the window */
+}
+
+/* Buttons must opt out of drag so they stay clickable */
+.tool-btn,
+.toolbar-group,
+.toolbar-divider,
+.toolbar-spacer {
+  -webkit-app-region: no-drag;
 }
 
 .toolbar-group {

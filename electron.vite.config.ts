@@ -31,6 +31,12 @@ export default defineConfig({
         '@': resolve('src/renderer/src')
       }
     },
-    plugins: [react()]
+    plugins: [react()],
+    optimizeDeps: {
+      include: [
+        '@babylonjs/core',
+        '@babylonjs/serializers/glTF'
+      ]
+    }
   }
 })
