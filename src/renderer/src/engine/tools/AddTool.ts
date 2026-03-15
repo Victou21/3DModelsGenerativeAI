@@ -3,19 +3,25 @@ import { Tool, ToolContext } from './Tool'
 import { Command } from '../commands/Command'
 import { AddVoxelCommand } from '../commands/AddVoxelCommand'
 
+const DRAG_THROTTLE_MS = 80
+
 export class AddTool extends Tool {
   readonly name = 'add'
   private isDown = false
-  private lastKey = ''  // tracks last placed cell to avoid duplicates during drag
+  private lastKey = ''
+  private lastPlacedAt = 0
 
   onPointerDown(pick: PickingInfo, ctx: ToolContext): Command | null {
     this.isDown = true
     this.lastKey = ''
+    this.lastPlacedAt = 0 // always allow the first click
     return this.buildCommand(pick, ctx)
   }
 
   onPointerMove(pick: PickingInfo, ctx: ToolContext): Command | null {
-    return this.isDown ? this.buildCommand(pick, ctx) : null
+    if (!this.isDown) return null
+    if (Date.now() - this.lastPlacedAt < DRAG_THROTTLE_MS) return null
+    return this.buildCommand(pick, ctx)
   }
 
   onPointerUp(_pick: PickingInfo, _ctx: ToolContext): void {
@@ -40,10 +46,10 @@ export class AddTool extends Tool {
     // Already occupied
     if (ctx.grid.has(x, y, z)) return null
 
-    // During drag, skip if we're still in the same cell
     const key = `${x},${y},${z}`
     if (key === this.lastKey) return null
     this.lastKey = key
+    this.lastPlacedAt = Date.now()
 
     return new AddVoxelCommand(ctx.grid, ctx.renderer, x, y, z, ctx.activeColor)
   }
