@@ -1,32 +1,26 @@
 import { Plus, Minus, Paintbrush, Grid3X3, Download, Undo2, Redo2, RotateCcw } from 'lucide-react'
 import { useStore } from '../store/useStore'
-import { ToolName } from '../engine/SceneManager'
+import { ToolName, MeshToolName } from '../engine/SceneManager'
+import { PrimitiveType } from '../engine/mesh/MeshObject'
+import { MeshToolbar } from './MeshToolbar'
 
-interface ToolItem {
-  name: ToolName
-  icon: React.ReactNode
-  label: string
-  shortcut: string
-}
-
-const TOOLS: ToolItem[] = [
-  { name: 'navigate', icon: <RotateCcw size={18} />, label: 'Rotate view',   shortcut: 'N' },
-  { name: 'add',      icon: <Plus size={18} />,      label: 'Add voxel',     shortcut: 'A' },
-  { name: 'remove',   icon: <Minus size={18} />,     label: 'Remove voxel',  shortcut: 'R' },
-  { name: 'paint',    icon: <Paintbrush size={18} />, label: 'Paint voxel',  shortcut: 'P' },
+const VOXEL_TOOLS: { name: ToolName; icon: React.ReactNode; label: string }[] = [
+  { name: 'navigate', icon: <RotateCcw size={18} />,  label: 'Rotate view (N)' },
+  { name: 'add',      icon: <Plus size={18} />,        label: 'Add voxel (A)'   },
+  { name: 'remove',   icon: <Minus size={18} />,       label: 'Remove voxel (R)'},
+  { name: 'paint',    icon: <Paintbrush size={18} />,  label: 'Paint voxel (P)' },
 ]
 
 interface Props {
   onExport: () => void
   onUndo: () => void
   onRedo: () => void
+  onAddPrimitive: (type: PrimitiveType) => void
+  onMeshTool: (tool: MeshToolName) => void
 }
 
-/**
- * Toolbar — vertical icon bar on the left edge.
- * Exposes tool selection, grid toggle, color swatch, undo/redo, and export.
- */
-export function Toolbar({ onExport, onUndo, onRedo }: Props): JSX.Element {
+export function Toolbar({ onExport, onUndo, onRedo, onAddPrimitive, onMeshTool }: Props): JSX.Element {
+  const appMode        = useStore((s) => s.appMode)
   const activeTool     = useStore((s) => s.activeTool)
   const showGrid       = useStore((s) => s.showGrid)
   const showColorPicker = useStore((s) => s.showColorPicker)
@@ -40,78 +34,67 @@ export function Toolbar({ onExport, onUndo, onRedo }: Props): JSX.Element {
   return (
     <div className="toolbar">
 
-      {/* Drawing tools */}
-      <div className="toolbar-group">
-        {TOOLS.map((tool) => (
-          <button
-            key={tool.name}
-            className={`tool-btn ${activeTool === tool.name ? 'active' : ''}`}
-            onClick={() => setActiveTool(tool.name)}
-            title={`${tool.label} (${tool.shortcut})`}
-          >
-            {tool.icon}
-          </button>
-        ))}
-      </div>
+      {/* Voxel tools */}
+      {appMode === 'voxel' && (
+        <>
+          <div className="toolbar-group">
+            {VOXEL_TOOLS.map((t) => (
+              <button
+                key={t.name}
+                className={`tool-btn ${activeTool === t.name ? 'active' : ''}`}
+                onClick={() => setActiveTool(t.name)}
+                title={t.label}
+              >
+                {t.icon}
+              </button>
+            ))}
+          </div>
 
-      <div className="toolbar-divider" />
+          <div className="toolbar-divider" />
 
-      {/* Color + grid */}
-      <div className="toolbar-group">
-        <button
-          className={`tool-btn color-btn ${showColorPicker ? 'active' : ''}`}
-          onClick={() => setShowColorPicker(!showColorPicker)}
-          title="Color picker"
-          style={{ '--swatch': activeColor } as React.CSSProperties}
-        >
-          <span className="color-swatch" />
-        </button>
+          <div className="toolbar-group">
+            <button
+              className={`tool-btn color-btn ${showColorPicker ? 'active' : ''}`}
+              onClick={() => setShowColorPicker(!showColorPicker)}
+              title="Color picker"
+              style={{ '--swatch': activeColor } as React.CSSProperties}
+            >
+              <span className="color-swatch" />
+            </button>
+            <button
+              className={`tool-btn ${showGrid ? 'active' : ''}`}
+              onClick={() => setShowGrid(!showGrid)}
+              title="Toggle grid"
+            >
+              <Grid3X3 size={18} />
+            </button>
+          </div>
 
-        <button
-          className={`tool-btn ${showGrid ? 'active' : ''}`}
-          onClick={() => setShowGrid(!showGrid)}
-          title="Toggle grid (G)"
-        >
-          <Grid3X3 size={18} />
-        </button>
-      </div>
+          <div className="toolbar-divider" />
 
-      <div className="toolbar-divider" />
+          <div className="toolbar-group">
+            <button className="tool-btn" onClick={onUndo} disabled={!canUndo} title="Undo (⌘Z)">
+              <Undo2 size={18} />
+            </button>
+            <button className="tool-btn" onClick={onRedo} disabled={!canRedo} title="Redo (⌘⇧Z)">
+              <Redo2 size={18} />
+            </button>
+          </div>
+        </>
+      )}
 
-      {/* Undo / Redo */}
-      <div className="toolbar-group">
-        <button
-          className="tool-btn"
-          onClick={onUndo}
-          disabled={!canUndo}
-          title="Undo (⌘Z)"
-        >
-          <Undo2 size={18} />
-        </button>
-
-        <button
-          className="tool-btn"
-          onClick={onRedo}
-          disabled={!canRedo}
-          title="Redo (⌘⇧Z)"
-        >
-          <Redo2 size={18} />
-        </button>
-      </div>
+      {/* Mesh tools */}
+      {appMode === 'mesh' && (
+        <MeshToolbar onAddPrimitive={onAddPrimitive} onMeshTool={onMeshTool} />
+      )}
 
       <div className="toolbar-spacer" />
 
-      {/* Export — pinned to bottom */}
       <div className="toolbar-group">
-        <button
-          className="tool-btn export-btn"
-          onClick={onExport}
-          title="Export GLB (⌘E)"
-        >
+        <button className="tool-btn export-btn" onClick={onExport} title="Export GLB (⌘E)">
           <Download size={18} />
         </button>
       </div>
-
     </div>
   )
 }

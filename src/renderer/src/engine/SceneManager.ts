@@ -21,13 +21,18 @@ import { AddTool } from './tools/AddTool'
 import { RemoveTool } from './tools/RemoveTool'
 import { PaintTool } from './tools/PaintTool'
 import { NavigateTool } from './tools/NavigateTool'
+import { MeshManager } from './mesh/MeshManager'
+import { MeshObject, PrimitiveType } from './mesh/MeshObject'
+import { MeshObjectData } from './mesh/MeshObject'
+import { GizmoMode } from './mesh/SelectionManager'
 
 export type ToolName = 'add' | 'remove' | 'paint' | 'navigate'
+export type MeshToolName = 'select' | 'move' | 'rotate' | 'scale'
+export type AppMode = 'voxel' | 'mesh'
 
 /**
- * SceneManager — top-level orchestrator for the Babylon.js scene.
- * Coordinates: engine, scene, camera, grid, renderer, ghost, undo stack,
- * keyboard handler, and the active tool.
+ * SceneManager — top-level orchestrator.
+ * Manages both Voxel mode and Mesh mode in a single Babylon.js scene.
  */
 export class SceneManager {
   private engine: Engine
@@ -40,22 +45,27 @@ export class SceneManager {
   private exporter: Exporter
   private undoStack: UndoRedoStack
   private keyboard: KeyboardHandler
+  private meshManager: MeshManager
 
-  private tools: Map<ToolName, Tool> = new Map([
-    ['add', new AddTool()],
-    ['remove', new RemoveTool()],
-    ['paint', new PaintTool()],
+  private voxelTools: Map<ToolName, Tool> = new Map([
+    ['add',      new AddTool()],
+    ['remove',   new RemoveTool()],
+    ['paint',    new PaintTool()],
     ['navigate', new NavigateTool()]
   ])
 
   private activeTool: Tool
-  private activeColor: string = '#5B8DD9'
   private activeToolName: ToolName = 'add'
+  private activeColor: string = '#5B8DD9'
+  private appMode: AppMode = 'voxel'
 
   // React callbacks
-  onVoxelCountChange?: (count: number) => void
-  onToolChange?: (tool: ToolName) => void
-  onHistoryChange?: (canUndo: boolean, canRedo: boolean) => void
+  onVoxelCountChange?:    (count: number) => void
+  onToolChange?:          (tool: ToolName) => void
+  onHistoryChange?:       (canUndo: boolean, canRedo: boolean) => void
+  onModeChange?:          (mode: AppMode) => void
+  onMeshObjectsChange?:   (objects: MeshObjectData[]) => void
+  onMeshSelectionChange?: (obj: MeshObject | null) => void
 
   constructor(canvas: HTMLCanvasElement) {
     this.engine = new Engine(canvas, true, { preserveDrawingBuffer: true })
@@ -69,12 +79,14 @@ export class SceneManager {
     this.grid = new Grid(this.scene, 32)
     this.exporter = new Exporter(this.scene)
     this.undoStack = new UndoRedoStack()
+    this.meshManager = new MeshManager(this.scene)
 
-    this.activeTool = this.tools.get('add')!
+    this.activeTool = this.voxelTools.get('add')!
 
-    this.undoStack.onHistoryChange = (canUndo, canRedo) => {
-      this.onHistoryChange?.(canUndo, canRedo)
-    }
+    this.undoStack.onHistoryChange = (u, r) => this.onHistoryChange?.(u, r)
+
+    this.meshManager.onObjectsChange = (objs) => this.onMeshObjectsChange?.(objs)
+    this.meshManager.onSelectionChange = (obj) => this.onMeshSelectionChange?.(obj)
 
     this.keyboard = new KeyboardHandler({
       setTool: (t) => this.setTool(t),
@@ -90,7 +102,7 @@ export class SceneManager {
     window.addEventListener('resize', () => this.engine.resize())
   }
 
-  // ─── Private setup ─────────────────────────────────────────────
+  // ─── Private setup ──────────────────────────────────────────────
 
   private setupLights(): void {
     const ambient = new HemisphericLight('ambient', new Vector3(0, 1, 0), this.scene)
@@ -113,20 +125,23 @@ export class SceneManager {
 
   private setupPointerEvents(): void {
     this.scene.onPointerObservable.add((pointerInfo) => {
-      // Suppress all tool events while Alt+dragging to orbit
-      if (this.camera.isAltDragging) {
-        this.ghost.hide()
-        return
+      if (this.camera.isAltDragging) { this.ghost.hide(); return }
+
+      if (pointerInfo.type === PointerEventTypes.POINTERDOWN && pointerInfo.event.button === 0) {
+        if (this.appMode === 'mesh') {
+          this.meshManager.handlePointerDown()
+          return
+        }
       }
+
+      if (this.appMode !== 'voxel') return
 
       const pick = this.scene.pick(this.scene.pointerX, this.scene.pointerY)
       if (!pick) return
-
       const ctx = this.buildToolContext()
 
       switch (pointerInfo.type) {
         case PointerEventTypes.POINTERMOVE: {
-          // Ghost voxel preview (independent of drag — always update)
           let ghostShown = false
           if (this.activeToolName === 'add' && pick.hit && pick.pickedPoint && pick.getNormal) {
             const normal = pick.getNormal(true)
@@ -143,7 +158,6 @@ export class SceneManager {
           }
           if (!ghostShown) this.ghost.hide()
 
-          // Drag placement — fires every cell the cursor enters
           if (pointerInfo.event.buttons === 1) {
             const cmd = this.activeTool.onPointerMove(pick, ctx)
             if (cmd) {
@@ -164,18 +178,33 @@ export class SceneManager {
           break
         }
 
-        case PointerEventTypes.POINTERUP: {
+        case PointerEventTypes.POINTERUP:
           this.activeTool.onPointerUp(pick, ctx)
           break
-        }
       }
     })
   }
 
-  // ─── Public API ────────────────────────────────────────────────
+  // ─── Public API — Mode ──────────────────────────────────────────
+
+  setMode(mode: AppMode): void {
+    this.appMode = mode
+    this.ghost.hide()
+
+    if (mode === 'mesh') {
+      // Hide voxel ghost, show grid
+      this.camera.setNavigateMode(false)
+    }
+
+    this.onModeChange?.(mode)
+  }
+
+  getMode(): AppMode { return this.appMode }
+
+  // ─── Public API — Voxel ─────────────────────────────────────────
 
   setTool(name: ToolName): void {
-    const tool = this.tools.get(name)
+    const tool = this.voxelTools.get(name)
     if (!tool) return
     this.activeTool = tool
     this.activeToolName = name
@@ -202,26 +231,47 @@ export class SceneManager {
     this.onVoxelCountChange?.(this.voxelGrid.count())
   }
 
+  canUndo(): boolean { return this.undoStack.canUndo() }
+  canRedo(): boolean { return this.undoStack.canRedo() }
+
+  // ─── Public API — Mesh ──────────────────────────────────────────
+
+  addPrimitive(type: PrimitiveType): void {
+    this.meshManager.addPrimitive(type)
+  }
+
+  setMeshTool(mode: GizmoMode): void {
+    this.meshManager.setGizmoMode(mode)
+  }
+
+  deleteSelectedMesh(): void {
+    this.meshManager.deleteSelected()
+  }
+
+  renameMeshObject(id: string, name: string): void {
+    this.meshManager.renameObject(id, name)
+  }
+
+  setSelectedMeshColor(hex: string): void {
+    const obj = this.meshManager.selection.getSelected()
+    if (obj) obj.setColor(hex)
+  }
+
+  // ─── Public API — Export ────────────────────────────────────────
+
   async exportGLB(): Promise<void> {
     await this.exporter.exportGLB()
   }
 
-  getVoxelCount(): number {
-    return this.voxelGrid.count()
-  }
-
-  getGridSize(): number {
-    return this.voxelGrid.size
-  }
-
-  canUndo(): boolean { return this.undoStack.canUndo() }
-  canRedo(): boolean { return this.undoStack.canRedo() }
+  getVoxelCount(): number { return this.voxelGrid.count() }
+  getGridSize(): number   { return this.voxelGrid.size }
 
   dispose(): void {
     this.keyboard.dispose()
     this.ghost.dispose()
     this.grid.dispose()
     this.renderer.dispose()
+    this.meshManager.dispose()
     this.camera.dispose()
     window.removeEventListener('resize', () => this.engine.resize())
     this.engine.dispose()
