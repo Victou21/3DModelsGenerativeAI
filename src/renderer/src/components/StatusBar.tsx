@@ -17,6 +17,7 @@ export function StatusBar(): JSX.Element {
     <div className="status-bar">
       <span>Grid 32 × 32 × 32</span>
       <span>{TOOL_LABELS[activeTool] ?? activeTool}</span>
+      <span className="status-hint">⌥ drag to rotate</span>
       <span>{voxelCount} {voxelCount === 1 ? 'voxel' : 'voxels'}</span>
     </div>
   )

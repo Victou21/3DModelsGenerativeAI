@@ -243,3 +243,8 @@ html, body, #root {
   font-size: 11px;
   letter-spacing: 0.02em;
 }
+
+.status-hint {
+  opacity: 0.4;
+  font-size: 10px;
+}
