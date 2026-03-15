@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { ToolName, MeshToolName, AppMode } from '../engine/SceneManager'
-import { MeshObjectData } from '../engine/mesh/MeshObject'
+import { MeshObject, MeshObjectData } from '../engine/mesh/MeshObject'
 
 interface ForgeState {
   // App
@@ -19,6 +19,7 @@ interface ForgeState {
   activeMeshTool: MeshToolName
   meshObjects: MeshObjectData[]
   selectedMeshId: string | null
+  selectedMeshObject: MeshObject | null  // live reference for PropertiesPanel
 
   // Setters
   setAppMode: (mode: AppMode) => void
@@ -31,6 +32,7 @@ interface ForgeState {
   setActiveMeshTool: (tool: MeshToolName) => void
   setMeshObjects: (objects: MeshObjectData[]) => void
   setSelectedMeshId: (id: string | null) => void
+  setSelectedMeshObject: (obj: MeshObject | null) => void
 }
 
 export const useStore = create<ForgeState>((set) => ({
@@ -45,15 +47,17 @@ export const useStore = create<ForgeState>((set) => ({
   activeMeshTool: 'select',
   meshObjects: [],
   selectedMeshId: null,
+  selectedMeshObject: null,
 
-  setAppMode:        (appMode)       => set({ appMode }),
-  setActiveTool:     (activeTool)    => set({ activeTool }),
-  setActiveColor:    (activeColor)   => set({ activeColor }),
-  setVoxelCount:     (voxelCount)    => set({ voxelCount }),
-  setShowGrid:       (showGrid)      => set({ showGrid }),
-  setHistory:        (canUndo, canRedo) => set({ canUndo, canRedo }),
-  setShowColorPicker:(showColorPicker) => set({ showColorPicker }),
-  setActiveMeshTool: (activeMeshTool) => set({ activeMeshTool }),
-  setMeshObjects:    (meshObjects)   => set({ meshObjects }),
-  setSelectedMeshId: (selectedMeshId) => set({ selectedMeshId })
+  setAppMode:           (appMode)       => set({ appMode }),
+  setActiveTool:        (activeTool)    => set({ activeTool }),
+  setActiveColor:       (activeColor)   => set({ activeColor }),
+  setVoxelCount:        (voxelCount)    => set({ voxelCount }),
+  setShowGrid:          (showGrid)      => set({ showGrid }),
+  setHistory:           (canUndo, canRedo) => set({ canUndo, canRedo }),
+  setShowColorPicker:   (showColorPicker) => set({ showColorPicker }),
+  setActiveMeshTool:    (activeMeshTool) => set({ activeMeshTool }),
+  setMeshObjects:       (meshObjects)   => set({ meshObjects }),
+  setSelectedMeshId:    (selectedMeshId) => set({ selectedMeshId }),
+  setSelectedMeshObject:(selectedMeshObject) => set({ selectedMeshObject })
 }))

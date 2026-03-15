@@ -23,12 +23,13 @@ export const Viewport = forwardRef<ViewportHandle>(function Viewport(_props, ref
   const activeTool    = useStore((s) => s.activeTool)
   const activeColor   = useStore((s) => s.activeColor)
   const showGrid      = useStore((s) => s.showGrid)
-  const setVoxelCount = useStore((s) => s.setVoxelCount)
-  const setActiveTool = useStore((s) => s.setActiveTool)
-  const setHistory    = useStore((s) => s.setHistory)
-  const setAppMode    = useStore((s) => s.setAppMode)
-  const setMeshObjects = useStore((s) => s.setMeshObjects)
-  const setSelectedMeshId = useStore((s) => s.setSelectedMeshId)
+  const setVoxelCount       = useStore((s) => s.setVoxelCount)
+  const setActiveTool       = useStore((s) => s.setActiveTool)
+  const setHistory          = useStore((s) => s.setHistory)
+  const setAppMode          = useStore((s) => s.setAppMode)
+  const setMeshObjects      = useStore((s) => s.setMeshObjects)
+  const setSelectedMeshId   = useStore((s) => s.setSelectedMeshId)
+  const setSelectedMeshObject = useStore((s) => s.setSelectedMeshObject)
 
   useImperativeHandle(ref, () => ({
     undo:                () => managerRef.current?.undo(),
@@ -54,7 +55,10 @@ export const Viewport = forwardRef<ViewportHandle>(function Viewport(_props, ref
     manager.onHistoryChange       = setHistory
     manager.onModeChange          = setAppMode
     manager.onMeshObjectsChange   = setMeshObjects
-    manager.onMeshSelectionChange = (obj: MeshObject | null) => setSelectedMeshId(obj?.id ?? null)
+    manager.onMeshSelectionChange = (obj: MeshObject | null) => {
+      setSelectedMeshId(obj?.id ?? null)
+      setSelectedMeshObject(obj)
+    }
     managerRef.current = manager
     return () => { manager.dispose(); managerRef.current = null }
   }, [])
